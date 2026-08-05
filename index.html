@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Expense Ledger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Special+Elite&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#faf9f4;
+    --paper-shadow:#e9e7dc;
+    --ink:#20211d;
+    --ink-soft:#5c5c53;
+    --stamp-red:#a5342b;
+    --stamp-green:#3c5a3c;
+    --rule:#c9c6b8;
+    --focus:#1f6f8b;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    min-height:100vh;
+    background:#d8d5c6;
+    background-image:
+      radial-gradient(circle at 20% 20%, rgba(0,0,0,0.04), transparent 40%),
+      radial-gradient(circle at 80% 60%, rgba(0,0,0,0.04), transparent 45%);
+    font-family:'IBM Plex Mono', monospace;
+    color:var(--ink);
+    display:flex;
+    justify-content:center;
+    padding:40px 16px 80px;
+  }
+  .receipt{
+    width:100%;
+    max-width:420px;
+    background:var(--paper);
+    box-shadow:0 30px 60px -20px rgba(0,0,0,0.35), 0 2px 0 var(--paper-shadow);
+    position:relative;
+    padding:28px 26px 0;
+  }
+  .receipt::before, .receipt::after{
+    content:"";
+    position:absolute;
+    left:0; right:0;
+    height:12px;
+    background-image: linear-gradient(135deg, var(--paper) 25%, transparent 25%),
+                       linear-gradient(225deg, var(--paper) 25%, transparent 25%);
+    background-size:16px 16px;
+    background-color:#d8d5c6;
+  }
+  .receipt::before{ top:-12px; background-position:0 12px, 8px 12px; }
+  .receipt::after{ bottom:-12px; background-image: linear-gradient(45deg, var(--paper) 25%, transparent 25%), linear-gradient(315deg, var(--paper) 25%, transparent 25%); background-position:0 0, 8px 0; }
+
+  header{ text-align:center; padding-bottom:14px; }
+  header h1{
+    font-family:'Special Elite', monospace;
+    font-size:22px;
+    letter-spacing:2px;
+    margin:0 0 4px;
+    text-transform:uppercase;
+  }
+  header .sub{ font-size:11px; color:var(--ink-soft); letter-spacing:1px; }
+  .rule{ border:none; border-top:1.5px dashed var(--rule); margin:16px 0; }
+  .rule.solid{ border-top:2px solid var(--ink); }
+
+  section h2{
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:2px;
+    color:var(--ink-soft);
+    margin:0 0 10px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  section h2::after{ content:""; flex:1; border-top:1px dotted var(--rule); }
+
+  .field{ margin-bottom:10px; }
+  label{ display:block; font-size:10px; text-transform:uppercase; letter-spacing:1px; color:var(--ink-soft); margin-bottom:4px; }
+  input[type=number], input[type=text], input[type=password], select{
+    width:100%;
+    font-family:inherit;
+    font-size:14px;
+    padding:8px 9px;
+    background:#fff;
+    border:1.5px solid var(--ink);
+    color:var(--ink);
+  }
+  input:focus, select:focus{ outline:2px solid var(--focus); outline-offset:1px; }
+  .row2{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+
+  button.primary{
+    width:100%;
+    font-family:inherit;
+    font-weight:700;
+    letter-spacing:1.5px;
+    text-transform:uppercase;
+    font-size:12px;
+    padding:11px;
+    background:var(--ink);
+    color:var(--paper);
+    border:none;
+    cursor:pointer;
+    margin-top:4px;
+  }
+  button.primary:hover{ background:#3a3b34; }
+  button.primary:disabled{ opacity:0.5; cursor:not-allowed; }
+  button.ghost{
+    font-family:inherit;
+    font-size:11px;
+    font-weight:600;
+    letter-spacing:1px;
+    text-transform:uppercase;
+    padding:9px;
+    background:transparent;
+    border:1.5px solid var(--ink);
+    cursor:pointer;
+    flex:1;
+  }
+  button.ghost:hover{ background:var(--ink); color:var(--paper); }
+  .btn-row{ display:flex; gap:10px; margin-top:6px; }
+
+  .entries{ list-style:none; margin:0; padding:0; }
+  .entries li{
+    display:grid;
+    grid-template-columns:38px 1fr auto 20px;
+    align-items:center;
+    gap:10px;
+    padding:8px 0;
+    border-bottom:1px dotted var(--rule);
+    font-size:13px;
+  }
+  .stamp{
+    font-family:'Special Elite', monospace;
+    font-size:9px;
+    font-weight:700;
+    text-align:center;
+    padding:4px 0;
+    border:1.5px solid var(--c, var(--stamp-red));
+    color:var(--c, var(--stamp-red));
+    border-radius:3px;
+    transform:rotate(var(--r,-3deg));
+    letter-spacing:0.5px;
+  }
+  .entry-main{ min-width:0; }
+  .entry-main .cname{ display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .entry-main .note{ display:block; font-size:10px; color:var(--ink-soft); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .amt{ font-weight:700; white-space:nowrap; }
+  .void-btn{ background:none; border:none; color:var(--ink-soft); cursor:pointer; font-size:14px; line-height:1; }
+  .void-btn:hover{ color:var(--stamp-red); }
+  .empty{ text-align:center; color:var(--ink-soft); font-size:12px; padding:18px 0; }
+
+  .total-row{ display:flex; justify-content:space-between; align-items:baseline; padding:14px 0 6px; }
+  .total-row .label{ font-size:12px; letter-spacing:2px; text-transform:uppercase; }
+  .total-row .value{ font-size:26px; font-weight:700; }
+
+  .chart-wrap{ display:flex; align-items:center; gap:18px; margin-bottom:6px; }
+  .chart-wrap canvas{ flex-shrink:0; }
+  .chart-empty{ font-size:11px; color:var(--ink-soft); text-align:center; padding:10px 0 4px; }
+  .legend{ list-style:none; margin:0; padding:0; flex:1; font-size:11px; min-width:0; }
+  .legend li{ display:flex; align-items:center; gap:7px; margin-bottom:6px; }
+  .legend .swatch{ width:9px; height:9px; border-radius:2px; flex-shrink:0; }
+  .legend .lname{ flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .legend .lamt{ font-weight:700; white-space:nowrap; }
+  .legend .lpct{ color:var(--ink-soft); width:34px; text-align:right; }
+
+  details{ margin-top:6px; }
+  summary{
+    cursor:pointer;
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:1.5px;
+    color:var(--ink-soft);
+    padding:10px 0;
+    list-style:none;
+  }
+  summary::-webkit-details-marker{ display:none; }
+  summary::before{ content:"▸ "; }
+  details[open] summary::before{ content:"▾ "; }
+  .sync-note{ font-size:10.5px; color:var(--ink-soft); line-height:1.5; margin-bottom:12px; }
+  .status{ font-size:11px; margin-top:8px; min-height:16px; }
+  .status.ok{ color:var(--stamp-green); }
+  .status.err{ color:var(--stamp-red); }
+  footer{ text-align:center; font-size:9.5px; color:var(--ink-soft); letter-spacing:1px; padding:18px 0 26px; }
+</style>
+</head>
+<body>
+<div class="receipt">
+
+  <header>
+    <h1>Expense Ledger</h1>
+    <div class="sub" id="todayDate">—</div>
+  </header>
+
+  <hr class="rule solid">
+
+  <section>
+    <h2>New entry</h2>
+    <div class="row2">
+      <div class="field">
+        <label for="amount">Amount (₹)</label>
+        <input type="number" id="amount" placeholder="0.00" min="0" step="0.01" inputmode="decimal">
+      </div>
+      <div class="field">
+        <label for="date">Date</label>
+        <input type="text" id="date" placeholder="YYYY-MM-DD">
+      </div>
+    </div>
+    <div class="field">
+      <label for="category">Category</label>
+      <input type="text" id="category" placeholder="type anything — e.g. Travel, Rent, Coffee" list="categoryList" autocomplete="off">
+      <datalist id="categoryList"></datalist>
+    </div>
+    <div class="field">
+      <label for="note">Note (optional)</label>
+      <input type="text" id="note" placeholder="e.g. auto to station">
+    </div>
+    <button class="primary" id="addBtn">Add entry</button>
+  </section>
+
+  <hr class="rule">
+
+  <section>
+    <h2>Ledger</h2>
+    <ul class="entries" id="entries"></ul>
+    <div class="empty" id="emptyMsg">No entries yet. Add your first one above.</div>
+  </section>
+
+  <hr class="rule solid">
+
+  <div class="total-row">
+    <div class="label">Total spent</div>
+    <div class="value" id="total">₹0.00</div>
+  </div>
+  <section>
+    <h2>Breakdown</h2>
+    <div class="chart-wrap">
+      <canvas id="chartCanvas" width="128" height="128" style="width:128px;height:128px;"></canvas>
+      <ul class="legend" id="legend"></ul>
+    </div>
+    <div class="chart-empty" id="chartEmpty" style="display:none;">Add an entry to see the breakdown.</div>
+  </section>
+
+  <hr class="rule">
+
+  <details id="syncPanel">
+    <summary>GitHub sync (encrypted backup)</summary>
+    <p class="sync-note">
+      Saves your ledger as an <strong>AES-256-GCM encrypted</strong> file to a GitHub repo you choose.
+      Your token and passphrase stay in this page's memory only — nothing is written to browser storage,
+      and nothing leaves your browser except the encrypted bytes sent to GitHub's API.
+      Use a fine-grained personal access token scoped to just this one repo, with only "Contents: read & write" permission.
+    </p>
+    <div class="field">
+      <label for="ghToken">GitHub token</label>
+      <input type="password" id="ghToken" placeholder="github_pat_...">
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label for="ghOwner">Repo owner</label>
+        <input type="text" id="ghOwner" placeholder="yourusername">
+      </div>
+      <div class="field">
+        <label for="ghRepo">Repo name</label>
+        <input type="text" id="ghRepo" placeholder="my-expenses">
+      </div>
+    </div>
+    <div class="field">
+      <label for="ghPath">File path in repo</label>
+      <input type="text" id="ghPath" value="expenses.enc.json">
+    </div>
+    <div class="field">
+      <label for="passphrase">Encryption passphrase</label>
+      <input type="password" id="passphrase" placeholder="choose a strong passphrase — do not lose it">
+    </div>
+    <div class="btn-row">
+      <button class="ghost" id="loadBtn">Load</button>
+      <button class="ghost" id="saveBtn">Save</button>
+    </div>
+    <div class="status" id="syncStatus"></div>
+  </details>
+
+  <footer>kept for personal use · no data leaves this page except what you explicitly sync</footer>
+</div>
+
+<script>
+(function(){
+  let entries = [];      // {id, amount, category, note, date}
+
+  const $ = (id) => document.getElementById(id);
+  const fmt = (n) => '₹' + Number(n).toFixed(2);
+
+  function todayISO(){
+    const d = new Date();
+    return d.toISOString().slice(0,10);
+  }
+
+  // ---------- Free-text category helpers ----------
+
+  // Deterministic color per category name, tuned to sit on the paper background.
+  function catColor(name){
+    let hash = 0;
+    const s = (name || 'uncategorized').toLowerCase();
+    for(let i = 0; i < s.length; i++){ hash = (hash * 31 + s.charCodeAt(i)) >>> 0; }
+    const hue = hash % 360;
+    return `hsl(${hue}, 45%, 34%)`;
+  }
+
+  // 2-3 letter stamp code from a free-text category name.
+  function catCode(name){
+    const words = (name || '?').trim().split(/\s+/).filter(Boolean);
+    if(words.length === 0) return '?';
+    if(words.length === 1) return words[0].slice(0,3).toUpperCase();
+    return words.slice(0,3).map(w => w[0]).join('').toUpperCase();
+  }
+
+  function knownCategories(){
+    const seen = new Map(); // lowercase -> original casing (first use)
+    entries.forEach(e => {
+      const key = (e.category || '').toLowerCase();
+      if(key && !seen.has(key)) seen.set(key, e.category);
+    });
+    return [...seen.values()];
+  }
+
+  function refreshCategoryList(){
+    $('categoryList').innerHTML = knownCategories()
+      .map(name => `<option value="${escapeHtml(name)}"></option>`).join('');
+  }
+
+  function init(){
+    $('todayDate').textContent = new Date().toDateString();
+    $('date').value = todayISO();
+    render();
+    $('addBtn').addEventListener('click', addEntry);
+    $('loadBtn').addEventListener('click', loadFromGitHub);
+    $('saveBtn').addEventListener('click', saveToGitHub);
+    $('amount').addEventListener('keydown', e => { if(e.key==='Enter') $('category').focus(); });
+    $('category').addEventListener('keydown', e => { if(e.key==='Enter') addEntry(); });
+  }
+
+  function addEntry(){
+    const amountEl = $('amount');
+    const catEl = $('category');
+    const amount = parseFloat(amountEl.value);
+    const category = catEl.value.trim();
+    if(!amount || amount <= 0){
+      amountEl.focus();
+      return;
+    }
+    if(!category){
+      catEl.focus();
+      return;
+    }
+    entries.unshift({
+      id: Date.now() + '-' + Math.random().toString(36).slice(2,7),
+      amount,
+      category,
+      note: $('note').value.trim(),
+      date: $('date').value || todayISO(),
+    });
+    amountEl.value = '';
+    catEl.value = '';
+    $('note').value = '';
+    amountEl.focus();
+    render();
+  }
+
+  function removeEntry(id){
+    entries = entries.filter(e => e.id !== id);
+    render();
+  }
+
+  function render(){
+    const list = $('entries');
+    const empty = $('emptyMsg');
+    list.innerHTML = '';
+    if(entries.length === 0){
+      empty.style.display = 'block';
+    } else {
+      empty.style.display = 'none';
+      entries.forEach((e, i) => {
+        const color = catColor(e.category);
+        const code = catCode(e.category);
+        const li = document.createElement('li');
+        li.innerHTML = `
+          <span class="stamp" style="--r:${(i % 2 === 0 ? -1 : 1) * 2}deg; --c:${color}">${escapeHtml(code)}</span>
+          <span class="entry-main">
+            <span class="cname">${escapeHtml(e.category)}</span>
+            <span class="note">${e.note ? escapeHtml(e.note) + ' · ' : ''}${e.date}</span>
+          </span>
+          <span class="amt">${fmt(e.amount)}</span>
+          <button class="void-btn" title="Remove" data-id="${e.id}">✕</button>
+        `;
+        li.querySelector('.void-btn').addEventListener('click', () => removeEntry(e.id));
+        list.appendChild(li);
+      });
+    }
+
+    const total = entries.reduce((s, e) => s + Number(e.amount), 0);
+    $('total').textContent = fmt(total);
+
+    const byCat = {};
+    entries.forEach(e => { byCat[e.category] = (byCat[e.category]||0) + Number(e.amount); });
+    renderChart(byCat, total);
+    refreshCategoryList();
+  }
+
+  function renderChart(byCat, total){
+    const canvas = $('chartCanvas');
+    const ctx = canvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    const size = 128;
+    canvas.width = size * dpr;
+    canvas.height = size * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, size, size);
+
+    const names = Object.keys(byCat).sort((a,b) => byCat[b] - byCat[a]);
+    const legend = $('legend');
+    const emptyMsg = $('chartEmpty');
+
+    if(names.length === 0 || total <= 0){
+      canvas.style.display = 'none';
+      legend.style.display = 'none';
+      emptyMsg.style.display = 'block';
+      legend.innerHTML = '';
+      return;
+    }
+    canvas.style.display = 'block';
+    legend.style.display = 'block';
+    emptyMsg.style.display = 'none';
+
+    const cx = size/2, cy = size/2, rOuter = 58, rInner = 34;
+    let start = -Math.PI/2;
+    names.forEach(name => {
+      const slice = (byCat[name] / total) * Math.PI * 2;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.arc(cx, cy, rOuter, start, start + slice);
+      ctx.closePath();
+      ctx.fillStyle = catColor(name);
+      ctx.fill();
+      start += slice;
+    });
+    // punch the donut hole (paper-colored) for separation
+    ctx.beginPath();
+    ctx.arc(cx, cy, rInner, 0, Math.PI*2);
+    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--paper').trim() || '#faf9f4';
+    ctx.fill();
+
+    // center total
+    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--ink').trim() || '#20211d';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = '700 13px "IBM Plex Mono", monospace';
+    ctx.fillText(fmt(total).replace('₹',''), cx, cy - 5);
+    ctx.font = '600 8px "IBM Plex Mono", monospace';
+    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--ink-soft').trim() || '#5c5c53';
+    ctx.fillText('TOTAL ₹', cx, cy + 9);
+
+    legend.innerHTML = names.map(name => {
+      const pct = Math.round((byCat[name] / total) * 100);
+      return `<li>
+        <span class="swatch" style="background:${catColor(name)}"></span>
+        <span class="lname">${escapeHtml(name)}</span>
+        <span class="lamt">${fmt(byCat[name])}</span>
+        <span class="lpct">${pct}%</span>
+      </li>`;
+    }).join('');
+  }
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+  }
+
+  // ---------- Encryption (AES-256-GCM, PBKDF2 key derivation) ----------
+
+  async function deriveKey(passphrase, salt){
+    const enc = new TextEncoder();
+    const baseKey = await crypto.subtle.importKey('raw', enc.encode(passphrase), 'PBKDF2', false, ['deriveKey']);
+    return crypto.subtle.deriveKey(
+      { name:'PBKDF2', salt, iterations:200000, hash:'SHA-256' },
+      baseKey,
+      { name:'AES-GCM', length:256 },
+      false,
+      ['encrypt','decrypt']
+    );
+  }
+
+  function toB64(buf){ return btoa(String.fromCharCode(...new Uint8Array(buf))); }
+  function fromB64(str){ return Uint8Array.from(atob(str), c => c.charCodeAt(0)); }
+
+  async function encryptEntries(passphrase, data){
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const key = await deriveKey(passphrase, salt);
+    const enc = new TextEncoder();
+    const ciphertext = await crypto.subtle.encrypt({ name:'AES-GCM', iv }, key, enc.encode(JSON.stringify(data)));
+    return JSON.stringify({
+      v: 1,
+      salt: toB64(salt),
+      iv: toB64(iv),
+      data: toB64(ciphertext),
+    });
+  }
+
+  async function decryptEntries(passphrase, payloadJson){
+    const payload = JSON.parse(payloadJson);
+    const salt = fromB64(payload.salt);
+    const iv = fromB64(payload.iv);
+    const key = await deriveKey(passphrase, salt);
+    const plaintext = await crypto.subtle.decrypt({ name:'AES-GCM', iv }, key, fromB64(payload.data));
+    return JSON.parse(new TextDecoder().decode(plaintext));
+  }
+
+  // ---------- GitHub sync ----------
+
+  function ghConfig(){
+    return {
+      token: $('ghToken').value.trim(),
+      owner: $('ghOwner').value.trim(),
+      repo: $('ghRepo').value.trim(),
+      path: $('ghPath').value.trim() || 'expenses.enc.json',
+      passphrase: $('passphrase').value,
+    };
+  }
+
+  function setStatus(msg, kind){
+    const el = $('syncStatus');
+    el.textContent = msg;
+    el.className = 'status' + (kind ? ' ' + kind : '');
+  }
+
+  function ghUrl(cfg){
+    return `https://api.github.com/repos/${encodeURIComponent(cfg.owner)}/${encodeURIComponent(cfg.repo)}/contents/${cfg.path.split('/').map(encodeURIComponent).join('/')}`;
+  }
+
+  async function loadFromGitHub(){
+    const cfg = ghConfig();
+    if(!cfg.token || !cfg.owner || !cfg.repo || !cfg.passphrase){
+      setStatus('Fill in token, owner, repo and passphrase first.', 'err');
+      return;
+    }
+    setStatus('Loading…');
+    try{
+      const res = await fetch(ghUrl(cfg), {
+        headers: {
+          'Authorization': `Bearer ${cfg.token}`,
+          'Accept': 'application/vnd.github+json',
+        }
+      });
+      if(res.status === 404){
+        setStatus('No file found yet at that path — save to create it.', 'err');
+        return;
+      }
+      if(!res.ok){
+        const t = await res.text();
+        throw new Error(`GitHub error ${res.status}: ${t.slice(0,200)}`);
+      }
+      const json = await res.json();
+      const raw = decodeURIComponent(escape(atob(json.content.replace(/\n/g,''))));
+      const decrypted = await decryptEntries(cfg.passphrase, raw);
+      entries = Array.isArray(decrypted) ? decrypted : [];
+      render();
+      setStatus(`Loaded ${entries.length} entries from GitHub.`, 'ok');
+    } catch(err){
+      console.error(err);
+      setStatus('Load failed: ' + (err.message.includes('decrypt') || err.name === 'OperationError' ? 'wrong passphrase or corrupted file.' : err.message), 'err');
+    }
+  }
+
+  async function saveToGitHub(){
+    const cfg = ghConfig();
+    if(!cfg.token || !cfg.owner || !cfg.repo || !cfg.passphrase){
+      setStatus('Fill in token, owner, repo and passphrase first.', 'err');
+      return;
+    }
+    setStatus('Saving…');
+    try{
+      // check for existing file to get its sha (needed to update rather than create)
+      let sha;
+      const existing = await fetch(ghUrl(cfg), {
+        headers: { 'Authorization': `Bearer ${cfg.token}`, 'Accept': 'application/vnd.github+json' }
+      });
+      if(existing.ok){
+        const j = await existing.json();
+        sha = j.sha;
+      } else if (existing.status !== 404){
+        const t = await existing.text();
+        throw new Error(`GitHub error ${existing.status}: ${t.slice(0,200)}`);
+      }
+
+      const encryptedPayload = await encryptEntries(cfg.passphrase, entries);
+      const contentB64 = btoa(unescape(encodeURIComponent(encryptedPayload)));
+
+      const res = await fetch(ghUrl(cfg), {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${cfg.token}`,
+          'Accept': 'application/vnd.github+json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: `Update expense ledger (${entries.length} entries) — ${new Date().toISOString()}`,
+          content: contentB64,
+          sha,
+        }),
+      });
+      if(!res.ok){
+        const t = await res.text();
+        throw new Error(`GitHub error ${res.status}: ${t.slice(0,200)}`);
+      }
+      setStatus(`Saved ${entries.length} entries to GitHub (encrypted).`, 'ok');
+    } catch(err){
+      console.error(err);
+      setStatus('Save failed: ' + err.message, 'err');
+    }
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>
