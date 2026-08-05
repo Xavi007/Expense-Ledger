@@ -147,8 +147,8 @@
   .entry-main .cname{ display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .entry-main .note{ display:block; font-size:10px; color:var(--ink-soft); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .amt{ font-weight:700; white-space:nowrap; }
-  .void-btn{ background:none; border:none; color:var(--ink-soft); cursor:pointer; font-size:14px; line-height:1; }
-  .void-btn:hover{ color:var(--stamp-red); }
+  .void-btn{ background:none; border:none; color:var(--ink-soft); cursor:pointer; font-size:16px; line-height:1; padding:6px; margin:-6px; border-radius:3px; }
+  .void-btn:hover{ color:var(--stamp-red); background:rgba(165,52,43,0.08); }
   .empty{ text-align:center; color:var(--ink-soft); font-size:12px; padding:18px 0; }
 
   .total-row{ display:flex; justify-content:space-between; align-items:baseline; padding:14px 0 6px; }
@@ -281,7 +281,7 @@
     <div class="status" id="syncStatus"></div>
   </details>
 
-  <footer>kept for personal use · no data leaves this page except what you explicitly sync</footer>
+  <footer>saved to this browser automatically · GitHub sync is manual &amp; encrypted</footer>
 </div>
 
 <script>
@@ -329,9 +329,35 @@
       .map(name => `<option value="${escapeHtml(name)}"></option>`).join('');
   }
 
+  // ---------- Local autosave (this device only, unencrypted, separate from GitHub sync) ----------
+
+  const LOCAL_KEY = 'expense-ledger-entries-v1';
+
+  function loadLocal(){
+    try{
+      const raw = localStorage.getItem(LOCAL_KEY);
+      if(!raw) return;
+      const parsed = JSON.parse(raw);
+      if(Array.isArray(parsed)) entries = parsed;
+    } catch(err){
+      // localStorage unavailable (e.g. inside a sandboxed preview) — just start empty.
+      console.warn('Local autosave unavailable:', err.message);
+    }
+  }
+
+  function saveLocal(){
+    try{
+      localStorage.setItem(LOCAL_KEY, JSON.stringify(entries));
+    } catch(err){
+      // Fails silently in environments that block localStorage (e.g. this chat's live preview).
+      // Works normally once the file is opened directly in a browser or hosted on GitHub Pages.
+    }
+  }
+
   function init(){
     $('todayDate').textContent = new Date().toDateString();
     $('date').value = todayISO();
+    loadLocal();
     render();
     $('addBtn').addEventListener('click', addEntry);
     $('loadBtn').addEventListener('click', loadFromGitHub);
@@ -391,9 +417,11 @@
             <span class="note">${e.note ? escapeHtml(e.note) + ' · ' : ''}${e.date}</span>
           </span>
           <span class="amt">${fmt(e.amount)}</span>
-          <button class="void-btn" title="Remove" data-id="${e.id}">✕</button>
+          <button class="void-btn" title="Delete this entry" aria-label="Delete entry">🗑</button>
         `;
-        li.querySelector('.void-btn').addEventListener('click', () => removeEntry(e.id));
+        li.querySelector('.void-btn').addEventListener('click', () => {
+          if(confirm(`Delete "${e.category}" — ${fmt(e.amount)} on ${e.date}?`)) removeEntry(e.id);
+        });
         list.appendChild(li);
       });
     }
@@ -405,6 +433,7 @@
     entries.forEach(e => { byCat[e.category] = (byCat[e.category]||0) + Number(e.amount); });
     renderChart(byCat, total);
     refreshCategoryList();
+    saveLocal();
   }
 
   function renderChart(byCat, total){
